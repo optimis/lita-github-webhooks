@@ -8,7 +8,7 @@ module Lita
         message = message_title
         response.matches.each do |match|
           if match.size == 2
-            redis.hset "webhook:user", match[0], match[1]
+            webhook_redis.hset "webhook:user", match[0], match[1]
             message << "\n>_%s `%s`_" % match
           end
         end
@@ -20,7 +20,7 @@ module Lita
 
       def get_user_mapping response
         message = message_title
-        redis.hgetall("webhook:user").each do |k,v|
+        webhook_redis.hgetall("webhook:user").each do |k,v|
           message << "\n>_%s `%s`_" % [k,v]
         end
 
@@ -33,8 +33,8 @@ module Lita
         message = ""
         response.matches.each do |match|
           if match.size == 1
-            message << "\n>_%s `%s`_ been deleted." % [match[0], redis.hget("webhook:user", match[0])]
-            redis.hdel "webhook:user", match[0]
+            message << "\n>_%s `%s`_ been deleted." % [match[0], webhook_redis.hget("webhook:user", match[0])]
+            webhook_redis.hdel "webhook:user", match[0]
           end
         end
 
@@ -44,6 +44,12 @@ module Lita
       def message_title
         "*%s `%s`*" % ["Github username", "Slack mention name"]
       end
+
+      private
+        def webhook_redis
+          redis.namespace = "handlers:github_webhooks"
+          redis
+        end
 
       Lita.register_handler(self)
     end

@@ -19,9 +19,8 @@ module Lita
       def push payload
         info = get_information_from payload
         message = message_generater info
-        repo = "#{info[:project]}:#{info[:branch]}"
 
-        if redis.zrange('webhook:list', 0, -1).include? repo
+        if need_notifier_all? info
           message[0].merge!(author_name: "@channel")
           send_messages message
         else
@@ -37,6 +36,17 @@ module Lita
       end
 
       private
+        def need_notifier_all? info
+          result = false
+          repo = "#{info[:project]}:#{info[:branch]}"
+          if info[:forced]
+            branch = info[:branch] + ":force"
+            result = config.notification_list.include? branch
+          end
+
+          result or config.notification_list.include? info[:branch] or redis.zrange('webhook:list', 0, -1).include? repo
+        end
+
         def get_information_from payload
           commits = []
           payload["commits"].each do |commit|
@@ -87,9 +97,14 @@ module Lita
             text = commit_info(info[:head])
           end
 
+          if info[:forced]
+            pretext = "[#{info[:project_link]}] Branch \"#{info[:branch]}\" was force-pushed by #{info[:head][:committer]}"
+          else
+            pretext = "[#{info[:project]}:#{info[:branch]}] " << pretext
+          end
           messages = [{
             color: config.color,
-            pretext: "[#{info[:project]}:#{info[:branch]}] #{pretext}",
+            pretext: pretext,
             text: text
           }]
         end

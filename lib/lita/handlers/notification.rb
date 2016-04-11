@@ -7,7 +7,7 @@ module Lita
       def add_notification_list response
         message = message_title
         response.matches.each do |match|
-          redis.zadd "webhook:list", 1, match[0]
+          webhook_redis.zadd "webhook:list", 1, match[0]
           message << "\n>_#{match[0]}_"
         end
 
@@ -18,7 +18,7 @@ module Lita
 
       def get_notification_list response
         message = message_title
-        redis.zrange("webhook:list", 0, -1).each do |item|
+        webhook_redis.zrange("webhook:list", 0, -1).each do |item|
           message << "\n>#{item}"
         end
 
@@ -32,7 +32,7 @@ module Lita
         response.matches.each do |match|
           if match.size == 1
             message << "\n>_#{match[0]}_ been deleted."
-            redis.zrem "webhook:list", match[0]
+            webhook_redis.zrem "webhook:list", match[0]
           end
         end
 
@@ -42,6 +42,12 @@ module Lita
       def message_title
         "*Repository:Branch*"
       end
+
+      private
+        def webhook_redis
+          redis.namespace = "handlers:github_webhooks"
+          redis
+        end
 
       Lita.register_handler(self)
     end
